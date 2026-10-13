@@ -1,0 +1,5 @@
+# 2.15.1 or newer is required, not just any 2.x: in 2.10.1 PyJWKClient's
+# get_jwk_set() reads its JWKS cache but never populates it, so the authorizer
+# refetches the JWKS on every invocation instead of only on a cold start
+# (requirement 3.7). tests/unit/test_authorizer.py pins that behaviour down.
+PyJWT[crypto]==2.15.1

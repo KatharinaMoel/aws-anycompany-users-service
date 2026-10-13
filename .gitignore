@@ -1,0 +1,19 @@
+# Terraform working directory, state, and saved plans.
+# .terraform.lock.hcl is deliberately NOT ignored: it pins provider versions
+# and belongs in version control.
+.terraform/
+*.tfstate
+*.tfstate.*
+tfplan
+
+# Lambda packages Terraform assembles from src/ plus dependencies.
+build/
+*.zip
+
+# Python and pytest artefacts
+__pycache__/
+.pytest_cache/
+.coverage
+
+# Test credentials: disposable, but still credentials.
+.env.test
