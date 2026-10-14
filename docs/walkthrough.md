@@ -62,7 +62,8 @@ gone.
 ## Screenshots
 
 All ten planned screenshots exist, taken in the console and the demo client shortly before the
-teardown, plus one that was not planned. Until they did, this section was a table of expected
+teardown, plus five that were not planned: 11 to 15 show what the ten leave out, and would cost
+a fresh deployment to take again. Until they did, this section was a table of expected
 filenames, because an `![](…)` pointing at a file that is not in the repository renders as a
 broken image on GitHub.
 
@@ -80,7 +81,7 @@ prompts that handed the mechanical half over.
 
 The resource tree with all six data methods and the three `OPTIONS` methods. The selected
 `GET /users` is authorized by `CognitoAuthorizer`; the frame does not show the other five
-methods' authorizers, or that `OPTIONS` has none.
+methods' authorizers, or that `OPTIONS` has none — 12 shows the latter.
 
 **02 — API Gateway → Stages → prod**
 
@@ -95,7 +96,7 @@ API's own log group.
 
 256 MB of memory and a 10 s timeout, the defaults in
 [`infrastructure/variables.tf`](../infrastructure/variables.tf). Runtime and architecture are on
-a different page and not in this frame.
+a different page and not in this frame, nor in any other here; 13 shows the logging side.
 
 **04 — DynamoDB → table → Indexes**
 
@@ -157,6 +158,35 @@ cannot: the page signed in as the user whose configuration is open beside it. Th
 unpublished all the same, for the reason given [at the end](#deliberately-not-published): it
 also holds temporary AWS credentials, which this picture does not. The file itself is still
 gitignored and not committed.
+
+**12 — API Gateway → Resources → `OPTIONS /users/{userid}`**
+
+![The OPTIONS method on /users/{userid} with no authorization and a mock integration](screenshots/12-api-options-preflight.png)
+
+The preflight method with authorization `NONE` and a mock integration, so it reaches no backend.
+Why this is the deliberate exception to "every method has an authorizer" is in the
+[findings below](#what-went-wrong-and-why).
+
+**13 — Lambda → anycompany-users-crud → Monitoring and operations tools**
+
+![Logging configuration of the CRUD function](screenshots/13-lambda-logging.png)
+
+Log format `JSON` at application log level `INFO`, into `/aws/lambda/anycompany-users-crud`, and
+Lambda service traces enabled — the logging and tracing conventions from
+[`AGENTS.md`](../AGENTS.md), on the deployed function.
+
+**14 — DynamoDB → table → Settings**
+
+![Table settings with deletion protection off](screenshots/14-dynamodb-deletion-protection.png)
+
+Deletion protection `Off`, which is deliberate: `AGENTS.md` forbids it because the stack is
+removed with `terraform destroy`. The table also carries the `Project` tag.
+
+**15 — X-Ray → Analytics, filtered to the CRUD function**
+
+![X-Ray analytics for the CRUD function](screenshots/15-xray-analytics.png)
+
+17 traces in the last hour, by status: 12 × `200`, 4 × `201`, 1 × `400`.
 
 ## Running the demo client
 
