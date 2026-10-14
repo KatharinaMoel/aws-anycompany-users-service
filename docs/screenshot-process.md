@@ -166,9 +166,79 @@ unprompted. The eight AWS console screenshots cannot be automated at all —
 they require an authenticated console session that only I have.
 ```
 
-## Why the prompt is shaped the way it is
+## The second prompt: identifying and embedding
 
-Three of its instructions exist because of mistakes that actually happened earlier in this
+The first prompt assumed the files would arrive already named. They did not — a screenshot tool
+produces names like `Bildschirmfoto von 2026-10-14 15-23-45.png`, and ten of those in one folder
+carry no information about which console page each shows. Renaming them by hand defeats the
+point of handing the work over, and renaming them by position in a directory listing is a guess
+dressed as a result.
+
+The way out is that an agent can *look* at an image file. So the second prompt makes
+identification the first step and an explicit checkpoint: read every frame, propose a mapping,
+and wait for a human to confirm it before a single file is renamed.
+
+```text
+The screenshots are now in docs/screenshots/. Some may already carry the
+inventory names; most carry whatever my screenshot tool produced. Your job is to
+identify them, rename them, embed them, and verify the result.
+
+docs/walkthrough.md ends with a screenshot inventory: ten expected filenames,
+where each comes from, and what each is evidence of. This file,
+docs/screenshot-process.md, explains how the images were made and how the work
+was divided. Read both before you start.
+
+1. List every image file in docs/screenshots/ with its size.
+
+2. Open each one and look at it. For each, tell me which inventory entry it
+   corresponds to and what you actually see in the frame - the service, the page,
+   the values that are legible. If you cannot read an image file, say so plainly
+   rather than guessing from its filename or its position in the list.
+
+3. Show me the complete proposed mapping as a table: current filename, target
+   inventory name, and what you saw. Then stop and wait for my confirmation. Do
+   not rename anything before I agree. A misidentified console page produces a
+   caption that claims something the picture does not show, which is worse than
+   a missing image.
+
+4. Flag anything that should not be published: a visible access token, a
+   password, .env.test contents, or a developer-tools pane showing request
+   headers. An AWS account id and an API id are acceptable - the account is
+   disposable. Tell me; do not delete or edit a file on your own.
+
+5. If an image matches no inventory entry, do not force it into one. Describe it
+   and propose either a new inventory row or leaving it out.
+
+6. After I confirm: rename the files, then replace each inventory row that now
+   has a file with the image embedded in the walkthrough, in inventory order,
+   each with a caption. Write the caption from what you actually saw in the
+   image, not from the planned wording in the table - if the picture shows less
+   than the row claimed, the caption says less.
+
+7. Leave every still-missing entry as a table row. Never write an image link to
+   a path that does not exist: GitHub renders it as a broken image, and
+   requirement 3.3 in specs/browser-demo/requirements.md forbids it.
+
+8. Verify, by running a check and showing me its output: every image path in
+   docs/walkthrough.md resolves to a file on disk, and no file in
+   docs/screenshots/ is left with a non-inventory filename. Report any image
+   over about 500 KB, but do not re-encode anything yourself.
+
+9. Ask me whether the manual browser check in subtask 2.6 of
+   specs/browser-demo/tasks.md is done, and tick it only if I say yes.
+
+10. Stage, draft a commit message in the style of the existing history - read
+    git log for it - and show it to me before committing. Do not push.
+
+Constraints: do not run terraform and do not call the AWS CLI; nothing in this
+task needs either. Do not create or commit .env.test. Do not edit anything under
+specs/ except ticking subtask 2.6. Match the repository's writing style: plain
+English, no marketing language, and say why rather than only what.
+```
+
+## Why the prompts are shaped the way they are
+
+Several of their instructions exist because of mistakes that actually happened earlier in this
 project, documented in [`walkthrough.md`](walkthrough.md#how-i-fooled-myself):
 
 - *"Do not tell me it is correct without running it."* A verification step that printed status
