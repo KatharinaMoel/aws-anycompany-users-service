@@ -4,7 +4,11 @@ A serverless REST API for managing user records, built spec-first: the requireme
 design, and task breakdown in [`specs/`](specs/) were written before any code, and the
 implementation follows them.
 
-Built during an AWS serverless workshop with Claude Code.
+Built during an AWS serverless workshop with Claude Code, as a learning exercise rather than a
+production service: the deployment it describes has been destroyed.
+
+**[`docs/walkthrough.md`](docs/walkthrough.md)** is the tour — what the running service looked
+like, what went wrong on the way, and how each problem was found.
 
 ## Architecture
 
@@ -43,6 +47,10 @@ Every endpoint requires a Cognito **access** token in the `Authorization` header
 | `PUT` | `/users/{userid}` | `200 {record}` | `400`, `404`, `500` |
 | `DELETE` | `/users/{userid}` | `200 {}` | `404`, `500` |
 
+Each path also answers `OPTIONS` without authorization, as a MOCK integration returning CORS
+headers and `{}`. A browser sends no credentials on a preflight, so that method cannot require a
+token without making the API unusable from any web page.
+
 A record holds exactly five fields: `userid` (uuid4, generated server-side), `name`,
 `email`, `createdAt`, and `updatedAt` (ISO 8601, UTC). Unrecognised fields in a request
 body are dropped rather than stored. Search is an exact, case-sensitive match through the
@@ -57,7 +65,10 @@ body are dropped rather than stored. Search is an exact, case-sensitive match th
 | `infrastructure/` | all Terraform, one file per concern |
 | `src/users/` | the CRUD function |
 | `src/authorizer/` | the token authorizer |
-| `tests/unit/` | pytest suite, 84 tests |
+| `tests/unit/` | pytest suite, 84 test cases |
+| `scripts/e2e.sh` | 43 end-to-end assertions against the deployed API |
+| `demo/index.html` | a dependency-free browser client, for seeing it run |
+| `docs/` | the walkthrough and its screenshots |
 | `build/` | Lambda packages Terraform assembles; not committed |
 
 ## Deploying
@@ -115,9 +126,14 @@ python3.13 -m pip install --user pytest pytest-cov "moto[dynamodb]>=5" "PyJWT[cr
 python3.13 -m pytest tests/unit -v --cov=src
 ```
 
-84 tests, 97% statement coverage. DynamoDB is mocked with moto 5's `mock_aws`, and the
+84 test cases from 52 test functions (six use `@pytest.mark.parametrize`), 97% statement
+coverage. DynamoDB is mocked with moto 5's `mock_aws`, and the
 authorizer tests sign tokens with a throwaway RSA key, so **no test touches AWS or the
 network**. Each test is named for the acceptance criterion it checks.
+
+Against a live deployment, `./scripts/e2e.sh` runs 43 assertions over the six endpoints, the
+authorization rules, and the CORS preflight. It reads `.env.test` (copy `.env.test.example`) and
+fetches its own Cognito token, so it needs no setup beyond that file.
 
 ## Notes worth knowing
 
@@ -133,6 +149,10 @@ A few behaviours that cost time to discover, and are encoded in the specs and te
 - **The authorizer returns a stage-wide policy** (`<api-id>/<stage>/*/*`) because API
   Gateway caches the result for 300 s and replays it across routes. A policy naming one
   method would deny the others — and it means adding a route needs no authorizer change.
+- **CORS headers on responses are only half of CORS.** Every endpoint requires an
+  `Authorization` header, which makes a browser `fetch` non-simple and triggers a preflight —
+  and an API with no `OPTIONS` method answers that with `403`, so no web page can reach it. The
+  preflight needs its own unauthenticated MOCK method.
 - **PyJWT must be 2.15.1 or newer.** In 2.10.1 `PyJWKClient` reads its JWKS cache but
   never populates it, so the authorizer refetched the JWKS on every invocation. A unit
   test pins this down.

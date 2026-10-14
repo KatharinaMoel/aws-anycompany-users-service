@@ -23,6 +23,77 @@ locals {
     schema      = { type = "string" }
   }]
 
+  # CORS preflight, one operation per path.
+  #
+  # This is the only method on the API that carries no authorizer, and the
+  # exception is unavoidable rather than convenient: a browser deliberately
+  # sends no Authorization header on a preflight, so an authorizer here would
+  # deny it and the browser would never send the real request - the API would be
+  # unreachable from any web page while looking correctly secured. The exposure
+  # is bounded: a MOCK integration is answered by API Gateway itself, so it
+  # reaches no backend, reads nothing, and returns headers plus an empty object.
+  # The only thing it discloses is which methods a path has, which the OpenAPI
+  # document below already states.
+  #
+  # Each path advertises only the methods it really has; a blanket
+  # GET,POST,PUT,DELETE,OPTIONS everywhere would claim DELETE /users exists.
+  preflight = {
+    for path, methods in {
+      "/users"          = "GET,POST,OPTIONS"
+      "/users/search"   = "GET,OPTIONS"
+      "/users/{userid}" = "GET,PUT,DELETE,OPTIONS"
+      } : path => {
+      options = {
+        summary = "CORS preflight; returns headers only."
+
+        # A response parameter can only be set on a header the method response
+        # declares, so these three names have to appear here as well.
+        responses = {
+          "200" = {
+            description = "Allowed origin, methods, and headers."
+            headers = {
+              "Access-Control-Allow-Origin"  = { schema = { type = "string" } }
+              "Access-Control-Allow-Methods" = { schema = { type = "string" } }
+              "Access-Control-Allow-Headers" = { schema = { type = "string" } }
+            }
+          }
+        }
+
+        # No security key: authorization is declared per operation in this
+        # document and never globally, so leaving it out is what makes the
+        # method unauthenticated. There is no inherited requirement to switch off.
+        "x-amazon-apigateway-integration" = {
+          type = "mock"
+
+          # Without this template API Gateway has nothing to answer the request
+          # with and returns 500.
+          requestTemplates = {
+            "application/json" = "{\"statusCode\": 200}"
+          }
+
+          responses = {
+            default = {
+              statusCode = "200"
+
+              # The inner single quotes are required. Without them API Gateway
+              # reads the value as a mapping expression rather than a literal
+              # and sends the header empty.
+              responseParameters = {
+                "method.response.header.Access-Control-Allow-Origin"  = "'${var.cors_allow_origin}'"
+                "method.response.header.Access-Control-Allow-Methods" = "'${methods}'"
+                "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization'"
+              }
+
+              responseTemplates = {
+                "application/json" = "{}"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   openapi_body = {
     openapi = "3.0.1"
 
@@ -61,7 +132,7 @@ locals {
     }
 
     paths = {
-      "/users" = {
+      "/users" = merge(local.preflight["/users"], {
         get = {
           operationId                       = "listUsers"
           summary                           = "List every user record."
@@ -88,12 +159,12 @@ locals {
           security                          = local.cognito_security
           "x-amazon-apigateway-integration" = local.lambda_integration
         }
-      }
+      })
 
       # API Gateway matches a literal segment ahead of a path variable whatever
       # order the paths appear in here, so /users/search reaches this operation
       # and never get_user with userid = "search".
-      "/users/search" = {
+      "/users/search" = merge(local.preflight["/users/search"], {
         get = {
           operationId = "searchUsers"
           summary     = "Find users by exact email address."
@@ -114,9 +185,9 @@ locals {
           security                          = local.cognito_security
           "x-amazon-apigateway-integration" = local.lambda_integration
         }
-      }
+      })
 
-      "/users/{userid}" = {
+      "/users/{userid}" = merge(local.preflight["/users/{userid}"], {
         get = {
           operationId = "getUser"
           summary     = "Fetch one user record by id."
@@ -161,7 +232,7 @@ locals {
           security                          = local.cognito_security
           "x-amazon-apigateway-integration" = local.lambda_integration
         }
-      }
+      })
     }
 
     components = {

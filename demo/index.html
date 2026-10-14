@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<!--
+  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+  SPDX-License-Identifier: MIT-0
+
+  A deliberately plain client for the AnyCompany Users Service: one file, no
+  build step, no dependencies, nothing account-specific committed. Serve it with
+
+      python3.13 -m http.server 8000 --directory demo
+
+  and open http://localhost:8000. Fill in the three configuration fields, or
+  prefill them from the query string:
+
+      http://localhost:8000/?api=<invoke url>&client=<app client id>&region=<region>
+
+  The access token is held in one JavaScript variable and never written to
+  localStorage, sessionStorage, a cookie, the URL, or the page - this client
+  exists to be screenshotted, and a token rendered into the DOM would end up in
+  an image in a public repository.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AnyCompany Users Service — demo client</title>
+<style>
+  :root { color-scheme: light; }
+  body { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+         margin: 0 auto; max-width: 56rem; padding: 2rem 1.25rem 4rem; color: #1b1b1f; }
+  h1 { font-size: 1.4rem; margin-bottom: .25rem; }
+  h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: .06em;
+       color: #555; margin: 2rem 0 .75rem; }
+  p.lede { color: #555; margin-top: 0; }
+  fieldset { border: 1px solid #d8d8de; border-radius: 6px; padding: 1rem 1.25rem 1.25rem; }
+  legend { padding: 0 .4rem; color: #555; font-size: .85rem; text-transform: uppercase;
+           letter-spacing: .06em; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .75rem 1rem; }
+  label { display: block; font-size: .8rem; color: #555; margin-bottom: .2rem; }
+  input { width: 100%; box-sizing: border-box; padding: .45rem .55rem; font: inherit;
+          border: 1px solid #c6c6cf; border-radius: 4px; background: #fff; }
+  .row { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+  button { font: inherit; padding: .45rem .9rem; border: 1px solid #c6c6cf; border-radius: 4px;
+           background: #f6f6f8; cursor: pointer; }
+  button:hover { background: #ededf2; }
+  button.primary { background: #1b1b1f; border-color: #1b1b1f; color: #fff; }
+  button.danger { border-color: #b4232a; color: #b4232a; }
+  #state { margin-top: .75rem; font-size: .9rem; }
+  .ok { color: #1a6c2e; } .warn { color: #8a5a00; } .err { color: #b4232a; }
+  pre { background: #1b1b1f; color: #f2f2f5; padding: 1rem; border-radius: 6px;
+        overflow-x: auto; font-size: 13px; min-height: 6rem; white-space: pre-wrap;
+        word-break: break-word; }
+  .status-line { font-weight: 600; }
+  footer { margin-top: 2.5rem; color: #666; font-size: .85rem; border-top: 1px solid #e4e4ea;
+           padding-top: 1rem; }
+  code { background: #f1f1f4; padding: .1rem .3rem; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<h1>AnyCompany Users Service</h1>
+<p class="lede">
+  A minimal client for the deployed REST API. Every call below carries a Cognito
+  <strong>access</strong> token; the browser sends a <code>CORS</code> preflight first, which the
+  API answers with a MOCK integration.
+</p>
+
+<h2>1 — Configuration</h2>
+<fieldset>
+  <legend>Deployment</legend>
+  <div class="grid">
+    <div>
+      <label for="api">API invoke URL</label>
+      <input id="api" placeholder="https://xxxx.execute-api.us-west-2.amazonaws.com/prod" autocomplete="off">
+    </div>
+    <div>
+      <label for="client">Cognito app client id</label>
+      <input id="client" placeholder="terraform output -raw app_client_id" autocomplete="off">
+    </div>
+    <div>
+      <label for="region">Region</label>
+      <input id="region" placeholder="us-west-2" autocomplete="off">
+    </div>
+  </div>
+</fieldset>
+
+<h2>2 — Sign in</h2>
+<fieldset>
+  <legend>Cognito USER_PASSWORD_AUTH</legend>
+  <div class="grid">
+    <div>
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="off">
+    </div>
+    <div>
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="off">
+    </div>
+  </div>
+  <div class="row">
+    <button class="primary" id="btn-login">Get access token</button>
+    <button id="btn-forget">Forget token</button>
+  </div>
+  <div id="state" class="warn">No token yet.</div>
+</fieldset>
+
+<h2>3 — Call the API</h2>
+<fieldset>
+  <legend>Endpoints</legend>
+  <div class="grid">
+    <div>
+      <label for="name">name (for create and update)</label>
+      <input id="name" value="Grace Hopper" autocomplete="off">
+    </div>
+    <div>
+      <label for="useremail">email (for create, update, search)</label>
+      <input id="useremail" value="grace@example.com" autocomplete="off">
+    </div>
+    <div>
+      <label for="userid">userid (filled in by create)</label>
+      <input id="userid" placeholder="uuid4" autocomplete="off">
+    </div>
+  </div>
+  <div class="row">
+    <button data-call="list">GET /users</button>
+    <button data-call="create">POST /users</button>
+    <button data-call="search">GET /users/search</button>
+    <button data-call="get">GET /users/{id}</button>
+    <button data-call="update">PUT /users/{id}</button>
+    <button class="danger" data-call="delete">DELETE /users/{id}</button>
+    <button class="danger" data-call="noauth">GET /users without a token</button>
+  </div>
+</fieldset>
+
+<h2>4 — Response</h2>
+<pre id="out">Nothing sent yet.</pre>
+
+<footer>
+  This form sends the password straight to Cognito over TLS with
+  <code>USER_PASSWORD_AUTH</code>. That is fine for a disposable workshop user and wrong for a
+  real application, where SRP or the hosted flow belongs. The token lives in memory only and is
+  gone when the tab closes.
+</footer>
+
+<script>
+"use strict";
+
+// The only place the token is ever kept.
+let accessToken = null;
+
+const el = (id) => document.getElementById(id);
+
+// Prefill from the query string so the page can be bookmarked per deployment
+// without any identifier entering git.
+const qs = new URLSearchParams(location.search);
+for (const [param, field] of [["api", "api"], ["client", "client"], ["region", "region"]]) {
+  if (qs.get(param)) el(field).value = qs.get(param).trim();
+}
+// A sensible default that is not deployment-specific.
+if (!el("region").value) el("region").value = "us-west-2";
+
+function setState(text, cls) {
+  const s = el("state");
+  s.textContent = text;
+  s.className = cls;
+}
+
+function show(statusLine, payload) {
+  const body = typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
+  el("out").innerHTML = "";
+  const line = document.createElement("div");
+  line.className = "status-line";
+  line.textContent = statusLine;
+  el("out").append(line, document.createTextNode("\n" + body));
+}
+
+function apiBase() {
+  return el("api").value.trim().replace(/\/+$/, "");
+}
+
+async function login() {
+  const region = el("region").value.trim();
+  const clientId = el("client").value.trim();
+  if (!region || !clientId) return setState("Region and app client id are required.", "err");
+
+  setState("Calling Cognito…", "warn");
+  let res, data;
+  try {
+    res = await fetch(`https://cognito-idp.${region}.amazonaws.com/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amz-Target": "AWSCognitoIdentityProviderService.InitiateAuth",
+      },
+      body: JSON.stringify({
+        AuthFlow: "USER_PASSWORD_AUTH",
+        ClientId: clientId,
+        AuthParameters: { USERNAME: el("email").value.trim(), PASSWORD: el("password").value },
+      }),
+    });
+    data = await res.json();
+  } catch (e) {
+    setState("Could not reach Cognito: " + e.message, "err");
+    return show("network error", String(e));
+  }
+
+  if (!res.ok) {
+    setState("Sign-in failed: " + (data.__type || res.status), "err");
+    return show(`InitiateAuth → ${res.status} ${res.statusText}`, data);
+  }
+
+  // A challenge is not a token. Surface it verbatim rather than pretending to
+  // have signed in; this client answers no challenges.
+  if (data.ChallengeName) {
+    setState("Cognito returned a challenge: " + data.ChallengeName, "warn");
+    return show("InitiateAuth → challenge", data);
+  }
+
+  accessToken = data.AuthenticationResult.AccessToken;
+  el("password").value = "";
+
+  // Deliberately not the token itself: only facts that are safe in a screenshot.
+  // Nothing here verifies the signature - that is the authorizer's job, and
+  // this is only a readout. A decode failure must not break a valid sign-in.
+  let claims = {};
+  try {
+    const b64 = accessToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    claims = JSON.parse(atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4)));
+  } catch (e) {
+    claims = { note: "claims could not be decoded: " + e.message };
+  }
+
+  setState(
+    `Access token held in memory. token_use=${claims.token_use}, client_id=${claims.client_id}, ` +
+    `expires in ${data.AuthenticationResult.ExpiresIn}s.`,
+    "ok"
+  );
+  show("InitiateAuth → 200", {
+    note: "The token is not displayed on purpose. These are its non-secret claims.",
+    token_use: claims.token_use,
+    client_id: claims.client_id,
+    sub: claims.sub,
+    exp: claims.exp ? new Date(claims.exp * 1000).toISOString() : undefined,
+  });
+}
+
+async function send(method, path, body, withAuth) {
+  if (!apiBase()) return setState("The API invoke URL is required.", "err");
+  if (withAuth && !accessToken) return setState("Get an access token first.", "err");
+
+  const headers = {};
+  if (withAuth) headers["Authorization"] = accessToken;
+  if (body) headers["Content-Type"] = "application/json";
+
+  let res, text;
+  try {
+    res = await fetch(apiBase() + path, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    text = await res.text();
+  } catch (e) {
+    // A blocked preflight surfaces here as an opaque TypeError, so say so.
+    return show(`${method} ${path} → request failed`,
+      String(e) + "\n\nIf this is a CORS failure, check that the OPTIONS method is deployed " +
+      "on this path and that the stage was redeployed.");
+  }
+
+  let parsed = text;
+  try { parsed = JSON.parse(text); } catch { /* keep the raw text */ }
+  show(`${method} ${path} → ${res.status} ${res.statusText}`, parsed);
+  return parsed;
+}
+
+const actions = {
+  list: () => send("GET", "/users", null, true),
+
+  create: async () => {
+    const created = await send("POST", "/users",
+      { name: el("name").value, email: el("useremail").value }, true);
+    if (created && created.userid) el("userid").value = created.userid;
+  },
+
+  search: () =>
+    send("GET", "/users/search?email=" + encodeURIComponent(el("useremail").value), null, true),
+
+  get: () => send("GET", "/users/" + encodeURIComponent(el("userid").value), null, true),
+
+  update: () => send("PUT", "/users/" + encodeURIComponent(el("userid").value),
+    { name: el("name").value, email: el("useremail").value }, true),
+
+  delete: () => send("DELETE", "/users/" + encodeURIComponent(el("userid").value), null, true),
+
+  // The point of this one is to fail: it proves the authorizer is doing its job.
+  noauth: () => send("GET", "/users", null, false),
+};
+
+el("btn-login").addEventListener("click", login);
+el("btn-forget").addEventListener("click", () => {
+  accessToken = null;
+  setState("Token discarded.", "warn");
+});
+for (const button of document.querySelectorAll("button[data-call]")) {
+  button.addEventListener("click", () => actions[button.dataset.call]());
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "agent",
+            "prompt": "Check if any new files were created or significant changes were made during this conversation. If so, update README.md to reflect the current project structure, components, and how to deploy and test the application. If README.md does not exist, create it. Keep the README concise: project title, one-paragraph description, directory structure, deploy instructions, and test instructions. Do not add content that is not supported by actual files in the project. Do not stage, commit, or run any other git commands."
+          }
+        ]
+      }
+    ]
+  }
+}
