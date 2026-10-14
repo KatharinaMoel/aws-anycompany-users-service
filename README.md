@@ -62,6 +62,7 @@ body are dropped rather than stored. Search is an exact, case-sensitive match th
 |---|---|
 | `specs/users-service/` | requirements, design, and tasks for the MVP |
 | `specs/customer-search/` | the same three documents for the search feature |
+| `specs/browser-demo/` | the same three for the preflight, the client, and this documentation |
 | `infrastructure/` | all Terraform, one file per concern |
 | `src/users/` | the CRUD function |
 | `src/authorizer/` | the token authorizer |
