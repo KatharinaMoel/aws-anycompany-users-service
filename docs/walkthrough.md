@@ -49,7 +49,7 @@ terraform output
 | Items | `dynamodbv2/home#item-explorer?table=anycompany-users` | records with exactly five attributes |
 | User pool | `cognito/v2/idp/user-pools/<pool-id>/users` | the test user, email as the username |
 | Logs | `cloudwatch/home#logsV2:log-group/...anycompany-users-crud` | one JSON record per request, with `route` and `api_request_id` |
-| Traces | `cloudwatch/home#xray:service-map/map` | API Gateway → Lambda → DynamoDB |
+| Traces | CloudWatch → Application Signals → *Trace Map* | client → API Gateway stage → Lambda, with timings |
 
 All of it is one `terraform apply` from `infrastructure/`, and one `terraform destroy` away from
 gone.
@@ -73,7 +73,7 @@ prompt that handed the mechanical half over.
 | `05-dynamodb-items.png` | DynamoDB → Item explorer | stored records, five attributes each |
 | `06-cognito-user.png` | Cognito → user pool → Users | the test user, confirmed |
 | `07-cloudwatch-json-log.png` | CloudWatch Logs, one entry expanded | structured fields, and no event dump or token |
-| `08-xray-service-map.png` | CloudWatch → X-Ray → Service map | the three-node trace through the request |
+| `08-xray-service-map.png` | CloudWatch → Application Signals → Trace Map | the request traced from client through the API Gateway stage into the Lambda; **not** DynamoDB, see below |
 | `09-browser-authorized.png` | the demo client | a `200` with real JSON, logged in |
 | `10-browser-401.png` | the demo client, *without a token* | the authorizer rejecting an unauthenticated call |
 
@@ -145,6 +145,20 @@ whole time; the preflight was the missing half. The fix is a MOCK integration pe
 is the one method on this API deliberately deployed without an authorizer: a browser sends no
 credentials on a preflight, so an authorizer there would make the API unreachable from the web
 while looking perfectly secured. It reaches no backend, reads nothing, and returns `{}`.
+
+**Active tracing does not trace the calls the function makes.** `tracing_config { mode =
+"Active" }` on a Lambda function and `xray_tracing_enabled` on the stage produce a trace, but it
+contains only what AWS records from the outside: the API Gateway stage, the Lambda service, the
+function invocation, and an `Overhead` subsegment. The function's own `boto3` calls to DynamoDB
+appear as subsegments only if the X-Ray SDK patches `boto3` inside the handler — `patch_all()`
+from `aws-xray-sdk`, which is a dependency `src/users/` deliberately does not have, since the
+MVP spec kept the CRUD function free of third-party packages. Verified by reading a trace
+document directly: three segments, no `namespace: aws` subsegment for DynamoDB.
+
+So the trace map shows a two-service path, not the three-tier picture the architecture diagram
+suggests. The diagram is not wrong about the architecture; the trace is just a narrower
+instrument than it looks. Closing the gap is one dependency and one `patch_all()` call, and it
+would be the right change for a service anyone had to operate.
 
 One more that is not a bug but costs time twice: **a new deployment takes a few seconds to
 propagate.** Right after adding `/users/search`, a request to it returned
