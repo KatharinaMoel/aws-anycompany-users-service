@@ -58,7 +58,7 @@ user says so.
       the preflight to Cognito returns CORS headers, `InitiateAuth` with the `.env.test` user
       returns an `AccessToken`, that token on `GET /users` returns `200`, and the same call
       without the header returns `401` *(verifies 2.3, 2.4, 2.9)*.
-- [ ] 2.6 **manual** The user serves the page with
+- [x] 2.6 **manual** The user serves the page with
       `python3.13 -m http.server 8000 --directory demo`, logs in, runs a call, and confirms the
       response panel shows real data *(verifies 2.6, 2.7, 2.8)*.
 

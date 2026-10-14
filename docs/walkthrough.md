@@ -31,6 +31,11 @@ running, crop or redact before committing.
 
 ## What was built
 
+![Client to REST API; REST API to the authorizer function, which checks against the Cognito user pool; REST API to and from the CRUD function, which reads and writes the Users table](architecture.svg)
+
+*Drawn for this repository after the topology in the workshop documentation, rather than copied
+from it, so that the picture can be published under the same licence as everything else here.*
+
 Six HTTP methods in front of one DynamoDB table, with every request authorized by a Lambda that
 validates Cognito access tokens. The links below are templates: fill in your own ids with
 
@@ -56,28 +61,102 @@ gone.
 
 ## Screenshots
 
-Expected files live in [`screenshots/`](screenshots/). They are listed rather than embedded: an
-`![](…)` pointing at a file that is not in the repository renders as a broken image on GitHub,
-and this list is also the capture plan.
+All ten planned screenshots exist, taken in the console and the demo client shortly before the
+teardown, plus one that was not planned. Until they did, this section was a table of expected
+filenames, because an `![](…)` pointing at a file that is not in the repository renders as a
+broken image on GitHub.
+
+Each caption describes what the frame actually shows, not what the capture plan hoped it would.
+Where the two differ — 01, 03, and 10 — the caption says less, and says so: a caption that
+claims more than its picture is a small version of the check that can only pass.
 
 [`screenshot-process.md`](screenshot-process.md) records how they were produced — which pieces
 the agent in the workshop environment could do, which needed a human with a browser, and the
-prompt that handed the mechanical half over.
+prompts that handed the mechanical half over.
 
-| File | Source | What it is evidence of |
-|---|---|---|
-| `01-api-resources.png` | API Gateway → Resources | six methods under a custom authorizer, `OPTIONS` without one |
-| `02-api-stage.png` | API Gateway → Stages → prod | tracing and access logging enabled on the deployed stage |
-| `03-lambda-crud.png` | Lambda → anycompany-users-crud | runtime, architecture, memory, and timeout as the specs state |
-| `04-dynamodb-index.png` | DynamoDB → table → Indexes | the `email-index` GSI, `ACTIVE`, not backfilling |
-| `05-dynamodb-items.png` | DynamoDB → Item explorer | stored records, five attributes each |
-| `06-cognito-user.png` | Cognito → user pool → Users | the test user, confirmed |
-| `07-cloudwatch-json-log.png` | CloudWatch Logs, one entry expanded | structured fields, and no event dump or token |
-| `08-xray-service-map.png` | CloudWatch → Application Signals → Trace Map | the request traced from client through the API Gateway stage into the Lambda; **not** DynamoDB, see below |
-| `09-browser-authorized.png` | the demo client | a `200` with real JSON, logged in |
-| `10-browser-401.png` | the demo client, *without a token* | the authorizer rejecting an unauthenticated call |
+**01 — API Gateway → Resources**
 
-Once the files exist, swap this table for embeds — or keep both, the table doubles as captions.
+![API Gateway resource tree with GET /users selected](screenshots/01-api-resources.png)
+
+The resource tree with all six data methods and the three `OPTIONS` methods. The selected
+`GET /users` is authorized by `CognitoAuthorizer`; the frame does not show the other five
+methods' authorizers, or that `OPTIONS` has none.
+
+**02 — API Gateway → Stages → prod**
+
+![The prod stage with X-Ray tracing and access logging active](screenshots/02-api-stage.png)
+
+The deployed `prod` stage with X-Ray tracing active and access logging active, writing to the
+API's own log group.
+
+**03 — Lambda → anycompany-users-crud → Configuration**
+
+![General configuration of the CRUD function](screenshots/03-lambda-crud.png)
+
+256 MB of memory and a 10 s timeout, the defaults in
+[`infrastructure/variables.tf`](../infrastructure/variables.tf). Runtime and architecture are on
+a different page and not in this frame.
+
+**04 — DynamoDB → table → Indexes**
+
+![The email-index global secondary index](screenshots/04-dynamodb-index.png)
+
+The `email-index` GSI with status `Active` and `email` as its partition key.
+
+**05 — DynamoDB → Item explorer**
+
+![A scan of the users table returning two items](screenshots/05-dynamodb-items.png)
+
+Two stored records, each with the five attributes `userid`, `createdAt`, `email`, `name`, and
+`updatedAt`.
+
+**06 — Cognito → user pool → Users**
+
+![The user pool's single user](screenshots/06-cognito-user.png)
+
+The test user, email verified, confirmed, and enabled.
+
+**07 — CloudWatch Logs, entries expanded**
+
+![Expanded JSON log events of the CRUD function](screenshots/07-cloudwatch-json-log.png)
+
+JSON log records with `route`, `status`, and `api_request_id` as separate fields, and no event
+dump or token in any of the entries shown.
+
+**08 — CloudWatch → Application Signals → Trace Map**
+
+![Trace map from the client through the API Gateway stage to both functions](screenshots/08-xray-service-map.png)
+
+The request traced from the client through the API Gateway stage into the authorizer and the
+CRUD function. There is no DynamoDB node; [see below](#what-went-wrong-and-why) for why.
+
+**09 — The demo client, logged in**
+
+![The demo client with a token in memory and a 200 response](screenshots/09-browser-authorized.png)
+
+Signed in, with only the token's non-secret claims shown, and `GET /users/{id}` answering `200`
+with a real record.
+
+**10 — The demo client, rejected**
+
+![The demo client showing a 401 response](screenshots/10-browser-401.png)
+
+`GET /users` answered `401 Unauthorized`. The frame shows the response, not the request, so it
+does not itself prove that no token was sent; the button that sends none is described
+[below](#running-the-demo-client).
+
+**11 — The demo client next to `.env.test`**
+
+![The demo client signed in, beside the editor showing .env.test](screenshots/11-demo-and-env-test.png)
+
+Not part of the plan, and published on purpose. The right half shows `.env.test` with the test
+user's password in plain text, which breaks the capture rule in
+[`screenshot-process.md`](screenshot-process.md#capture-rules). It is here because the user pool
+is destroyed with the stack, so the password opens nothing, and the frame shows what the others
+cannot: the page signed in as the user whose configuration is open beside it. The session transcript stays
+unpublished all the same, for the reason given [at the end](#deliberately-not-published): it
+also holds temporary AWS credentials, which this picture does not. The file itself is still
+gitignored and not committed.
 
 ## Running the demo client
 

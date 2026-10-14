@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="440" viewBox="0 0 820 440" font-family="Helvetica, Arial, sans-serif">
+  <!-- Drawn for this repository: the topology of the AnyCompany Users Service, no third-party artwork. -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#222"/>
+    </marker>
+  </defs>
+  <rect width="820" height="440" fill="#ffffff"/>
+
+  <!-- Service columns: a coloured header strip and a dashed outline -->
+  <g stroke="#888" stroke-dasharray="3,3" fill="none">
+    <rect x="200" y="30" width="120" height="270"/>
+    <rect x="350" y="30" width="120" height="400"/>
+    <rect x="500" y="30" width="120" height="270"/>
+    <rect x="650" y="30" width="120" height="400"/>
+  </g>
+  <rect x="200" y="30" width="120" height="40" fill="#7b4fc9"/>
+  <rect x="350" y="30" width="120" height="40" fill="#e07b00"/>
+  <rect x="500" y="30" width="120" height="40" fill="#d6313b"/>
+  <rect x="650" y="30" width="120" height="40" fill="#3b5bd6"/>
+  <g font-size="15" font-weight="bold" fill="#ffffff" text-anchor="middle">
+    <text x="260" y="56">API Gateway</text>
+    <text x="410" y="56">Lambda</text>
+    <text x="560" y="56">Cognito</text>
+    <text x="710" y="56">DynamoDB</text>
+  </g>
+
+  <!-- Nodes -->
+  <g stroke-width="2" fill="#ffffff">
+    <rect x="40"  y="200" width="110" height="60" rx="8" stroke="#555"/>
+    <rect x="215" y="200" width="90"  height="60" rx="8" stroke="#7b4fc9"/>
+    <rect x="360" y="190" width="100" height="80" rx="8" stroke="#e07b00"/>
+    <rect x="510" y="200" width="100" height="60" rx="8" stroke="#d6313b"/>
+    <rect x="360" y="320" width="100" height="80" rx="8" stroke="#e07b00"/>
+    <rect x="660" y="330" width="100" height="60" rx="8" stroke="#3b5bd6"/>
+  </g>
+  <g font-size="14" font-weight="bold" fill="#222" text-anchor="middle">
+    <text x="95"  y="226">Client</text>
+    <text x="95"  y="244">(Mobile/Web)</text>
+    <text x="260" y="235">REST API</text>
+    <text x="410" y="226">Authorizer</text>
+    <text x="410" y="244">function</text>
+    <text x="560" y="235">User Pool</text>
+    <text x="410" y="356">CRUD User</text>
+    <text x="410" y="374">function</text>
+    <text x="710" y="356">Users</text>
+    <text x="710" y="374">Table</text>
+  </g>
+
+  <!-- Flows -->
+  <g stroke="#222" stroke-width="1.5" fill="none">
+    <line x1="150" y1="230" x2="213" y2="230" marker-end="url(#arrow)"/>
+    <line x1="305" y1="230" x2="358" y2="230" marker-end="url(#arrow)"/>
+    <line x1="460" y1="230" x2="508" y2="230" marker-end="url(#arrow)"/>
+    <polyline points="307,250 335,262 335,348 358,360" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <line x1="460" y1="360" x2="658" y2="360" marker-end="url(#arrow)"/>
+  </g>
+</svg>
