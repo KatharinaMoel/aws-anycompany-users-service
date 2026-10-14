@@ -58,12 +58,27 @@ browser: sign in with the test user, call an endpoint, capture the response pane
 the deliberate `401`. That needs a browser automation stack installed somewhere with a display
 or a headless engine, and a live deployment.
 
-The other eight come from the AWS console, and those cannot be automated in any reasonable way:
-they need an authenticated console session, which belongs to a person and not to a role assumed
-by a CLI. No amount of local tooling changes that.
+The other eight come from the AWS console, which needs an authenticated console session — that
+belongs to a person, not to a role assumed by a CLI. No amount of local tooling changes that.
 
-This is a useful general shape. The boundary is not "GUI versus terminal" — it is whether a
-human identity is required. A public API with a token is scriptable; a console session is not.
+It is tempting to conclude from this that an agent can play no part in capturing them, and that
+is where the first version of this document was wrong. The boundary is narrower than "no
+browser, no screenshots". An agent with a shell on the machine that owns the display can:
+
+- **capture** what is on screen, with `gnome-screenshot` or an equivalent, writing straight to
+  the filename the inventory expects;
+- **look at the result**, because it can read an image file, and so report whether the frame
+  shows the intended page and whether a token or password is visible in it;
+- **place, embed, and verify** — the mechanical half it was given anyway.
+
+What it cannot do is *navigate*: sign in, click through to the right page, scroll the panel into
+view. So the division that actually works is not "human does the screenshots, agent does the
+markdown". It is: the human puts the right thing on the screen, the agent presses the shutter
+and checks the frame.
+
+The general shape is still worth keeping, just stated more carefully. The question is never
+"GUI or terminal" — it is which steps require a human identity. Authenticating is one.
+Navigating a session is one. Capturing a rectangle of pixels is not.
 
 ## The handover prompt
 
@@ -164,6 +179,13 @@ project, documented in [`walkthrough.md`](walkthrough.md#how-i-fooled-myself):
 - *"Say so plainly instead of implying you checked."* Three separate secret scans in this project
   produced false positives by matching a field name instead of a value. A check that cannot fail
   is worse than no check, because it is believed.
+
+One line of that prompt is wrong, and it is left in place because this is a record rather than a
+template: *"Never claim to have taken a screenshot. You have no browser."* The first sentence is
+sound. The second overreached — the agent had no browser, but it did have the display, and the
+display is what a screenshot needs. The instruction should have been "do not claim to have
+navigated anywhere": capture the window I put in front of you, read the file back, and tell me
+what you see in it.
 
 ## Capture rules
 
