@@ -70,6 +70,7 @@ body are dropped rather than stored. Search is an exact, case-sensitive match th
 | `scripts/e2e.sh` | 43 end-to-end assertions against the deployed API |
 | `demo/index.html` | a dependency-free browser client, for seeing it run |
 | `docs/walkthrough.md` | the resource tour, the findings, and the screenshot inventory |
+| `docs/how-this-was-built.md` | the process: the spec loop, the verification discipline, where the method failed |
 | `docs/screenshot-process.md` | how the images were produced, and the two prompts that handed the work over |
 | `docs/screenshots/` | the images themselves |
 | `build/` | Lambda packages Terraform assembles; not committed |
