@@ -236,6 +236,52 @@ specs/ except ticking subtask 2.6. Match the repository's writing style: plain
 English, no marketing language, and say why rather than only what.
 ```
 
+## When the files change under a running agent
+
+Handing work to an agent on a second machine means the repository is being edited in two places
+at once, and the failure that follows is quiet. An agent reads a file into its context once. If
+you `git pull` while it is working, the file on disk changes and its memory of that file does
+not. It will go on reasoning about the version it read, and the only symptom may be an edit that
+fails to apply — or worse, one that applies and encodes a claim the current file no longer
+makes.
+
+That happened here: the inventory row describing the trace-map screenshot was corrected while
+the local agent was already running, so it held a row claiming a three-node trace that the
+repository no longer contained and the picture never showed.
+
+There is no clever fix. Tell it, naming the files and what changed in them:
+
+```text
+Stop and re-read before you write anything further. I pulled new commits while
+you were running, so the files on disk changed under you:
+
+- docs/walkthrough.md: the screenshot inventory row for 08 changed. It no longer
+  says "three-node trace" and no longer mentions DynamoDB; the console path is
+  now CloudWatch -> Application Signals -> Trace Map. A new finding section
+  about active tracing not instrumenting boto3 was added above the propagation
+  note.
+- docs/screenshot-process.md: now holds a second prompt, the one you are working
+  from, plus a correction about what an agent can and cannot do here.
+- README.md: two layout table rows changed.
+
+Discard whatever you remember of those three files and re-read
+docs/walkthrough.md in full. Base the inventory mapping and every caption on the
+current content, not on what you read earlier. If one of your edits failed
+because the file had changed on disk, that is the reason.
+
+Before you continue, tell me the state of your work: which files you have
+already modified, whether anything is staged, and whether you have renamed any
+image yet.
+```
+
+The last paragraph is the one that matters. If it had already rewritten part of the inventory
+against the stale row, the cheapest recovery is `git checkout -- docs/walkthrough.md` and a
+fresh start; renamed image files are unaffected, since they are not in git yet.
+
+The general rule, worth more than the specific message: **pull before the agent starts, not
+while it runs.** If you cannot avoid it, treat its context as stale and say so explicitly rather
+than hoping it re-reads on its own.
+
 ## Why the prompts are shaped the way they are
 
 Several of their instructions exist because of mistakes that actually happened earlier in this
