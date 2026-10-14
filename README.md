@@ -71,6 +71,7 @@ body are dropped rather than stored. Search is an exact, case-sensitive match th
 | `demo/index.html` | a dependency-free browser client, for seeing it run |
 | `docs/walkthrough.md` | the resource tour, the screenshots, and the findings |
 | `docs/architecture.svg` | the architecture diagram, drawn for this repository |
+| `docs/how-this-was-built.md` | how the work was organised, and where the method failed |
 | `docs/screenshot-process.md` | how the images were produced, and the two prompts that handed the work over |
 | `docs/screenshots/` | the images themselves |
 | `build/` | Lambda packages Terraform assembles; not committed |
