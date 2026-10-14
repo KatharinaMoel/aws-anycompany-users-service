@@ -71,10 +71,9 @@ body are dropped rather than stored. Search is an exact, case-sensitive match th
 | `demo/index.html` | a dependency-free browser client, for seeing it run |
 | `docs/walkthrough.md` | the resource tour, the screenshots, and the findings |
 | `docs/architecture.svg` | the architecture diagram, drawn for this repository |
-| `docs/how-this-was-built.md` | how the work was organised, and where the method failed |
 | `docs/how-this-was-built.md` | the process: the spec loop, the verification discipline, where the method failed |
 | `docs/screenshot-process.md` | how the images were produced, and the two prompts that handed the work over |
-| `docs/screenshots/` | the images themselves |
+| `docs/screenshots/` | the images themselves, with a gallery page |
 | `build/` | Lambda packages Terraform assembles; not committed |
 
 ## Deploying
@@ -95,6 +94,61 @@ Run every `terraform` command from `infrastructure/`; that directory is the root
 Adding the GSI takes several minutes, because DynamoDB backfills the index.
 
 Outputs include the invoke URL, the user pool id, and the app client id.
+
+### What the three commands do
+
+Terraform compares three things: the configuration in the `.tf` files, its own record of what it
+created last time (the *state*), and what actually exists in AWS. Every command is a step in
+that comparison.
+
+- **`terraform init`** downloads the three providers named in `main.tf` — `aws`, `archive`,
+  and `null` — into `infrastructure/.terraform/`. The exact versions it picked are pinned in
+  `.terraform.lock.hcl`, which is committed so that every machine resolves the same ones.
+  Nothing touches AWS yet.
+- **`terraform plan -out=tfplan`** reads the configuration and the state, asks AWS what
+  currently exists, and works out what would have to be created, changed, or destroyed to make
+  AWS match the configuration. The summary it prints is the thing to read before going on.
+  `-out=tfplan` saves exactly that set of changes, so the apply cannot do something the summary
+  did not show.
+- **`terraform apply tfplan`** carries out the saved plan, then writes the result to
+  `terraform.tfstate`. That file is how the next `plan` or `destroy` knows which real
+  resources belong to this configuration.
+
+Apart from the lock file, nothing these commands produce is committed. `.terraform/` is a
+download, `tfplan` is stale the moment it is applied, and the state holds every resource
+identifier in the account — and, because a saved plan bundles a copy of the state, so does
+`tfplan`.
+
+### Where the Lambda packages come from
+
+A Lambda function is deployed as a zip file. Terraform builds both zips on the machine running
+it, in `build/` at the repository root, and uploads them. `build/` is never committed: it is
+`src/` plus packages that pip can download again.
+
+- **The CRUD function** has no third-party dependencies, so its package is simply
+  `src/users/` zipped into `build/users.zip`, without `__pycache__`, so that running the tests
+  cannot change it. Lambda's Python runtime already provides `boto3`.
+- **The authorizer** needs PyJWT and `cryptography`. A `null_resource` in
+  `lambda-authorizer.tf` runs a shell command locally: empty `build/authorizer/`, install
+  `src/authorizer/requirements.txt` into it with `python3.13 -m pip install -t`, and copy
+  `app.py` next to the packages. That folder is then zipped into `build/authorizer.zip`. The
+  step reruns only when `requirements.txt` or `app.py` changes, because those two files' hashes
+  are its triggers.
+
+Each function records the hash of its zip (`source_code_hash`), so a `plan` shows a code
+update only when the zip's contents actually changed.
+
+The packages are built for the processor of the machine running Terraform, because pip
+installs the wheels that fit where it runs. The workshop machine was arm64 (Graviton), matching
+the functions' `arm64` architecture. On an x86 machine the same command would package x86
+builds of `cryptography`, which the arm64 function could not load.
+
+`terraform destroy` removes the AWS resources and leaves `build/` and an emptied state behind.
+
+One consequence of the trigger mechanism: deleting `build/` while the state still records a
+deployment makes the next `plan` fail, because the install step has not changed and does not
+rerun, so there is no folder to zip. `terraform plan -replace=null_resource.authorizer_dependencies
+-out=tfplan` forces the rebuild. After a `destroy`, a fresh apply rebuilds everything anyway.
 
 ### Getting a token
 
