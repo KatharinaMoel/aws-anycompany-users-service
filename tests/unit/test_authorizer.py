@@ -19,8 +19,8 @@ from jwt.algorithms import RSAAlgorithm
 from conftest import APP_CLIENT_ID, REGION, SRC, USER_POOL_ID, load_module
 
 ISSUER = f"https://cognito-idp.{REGION}.amazonaws.com/{USER_POOL_ID}"
-METHOD_ARN = f"arn:aws:execute-api:{REGION}:123456789012:bllwti9noj/prod/GET/users"
-STAGE_RESOURCE = f"arn:aws:execute-api:{REGION}:123456789012:bllwti9noj/prod/*/*"
+METHOD_ARN = f"arn:aws:execute-api:{REGION}:123456789012:testapi123/prod/GET/users"
+STAGE_RESOURCE = f"arn:aws:execute-api:{REGION}:123456789012:testapi123/prod/*/*"
 KID = "test-key-1"
 OTHER_KID = "test-key-2"
 SUB = "98e1c3e0-4051-70c6-714b-521797590940"
@@ -106,8 +106,8 @@ def test_valid_access_token_is_allowed(authorizer):
 def test_policy_covers_every_method_in_the_stage(authorizer):
     """Requirement 3.6: the cached policy is replayed across routes."""
     for arn in (
-        f"arn:aws:execute-api:{REGION}:123456789012:bllwti9noj/prod/DELETE/users/abc",
-        f"arn:aws:execute-api:{REGION}:123456789012:bllwti9noj/prod/POST/users",
+        f"arn:aws:execute-api:{REGION}:123456789012:testapi123/prod/DELETE/users/abc",
+        f"arn:aws:execute-api:{REGION}:123456789012:testapi123/prod/POST/users",
     ):
         policy = authorizer.handler(event(sign(access_claims()), arn), None)
         assert policy["policyDocument"]["Statement"][0]["Resource"] == [STAGE_RESOURCE]
@@ -115,7 +115,7 @@ def test_policy_covers_every_method_in_the_stage(authorizer):
 
 def test_stage_resource_survives_a_colon_in_the_path(authorizer):
     """rsplit(':', 1) would split inside the path and corrupt the ARN."""
-    arn = f"arn:aws:execute-api:{REGION}:123456789012:bllwti9noj/prod/GET/users/a:b"
+    arn = f"arn:aws:execute-api:{REGION}:123456789012:testapi123/prod/GET/users/a:b"
     policy = authorizer.handler(event(sign(access_claims()), arn), None)
     assert policy["policyDocument"]["Statement"][0]["Resource"] == [STAGE_RESOURCE]
 
