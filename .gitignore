@@ -15,5 +15,8 @@ __pycache__/
 .pytest_cache/
 .coverage
 
+# ignore PyCharm editor files
+.idea/
+
 # Test credentials: disposable, but still credentials.
 .env.test
