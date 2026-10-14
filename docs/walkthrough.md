@@ -60,6 +60,10 @@ Expected files live in [`screenshots/`](screenshots/). They are listed rather th
 `![](…)` pointing at a file that is not in the repository renders as a broken image on GitHub,
 and this list is also the capture plan.
 
+[`screenshot-process.md`](screenshot-process.md) records how they were produced — which pieces
+the agent in the workshop environment could do, which needed a human with a browser, and the
+prompt that handed the mechanical half over.
+
 | File | Source | What it is evidence of |
 |---|---|---|
 | `01-api-resources.png` | API Gateway → Resources | six methods under a custom authorizer, `OPTIONS` without one |
