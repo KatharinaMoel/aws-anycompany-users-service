@@ -69,7 +69,9 @@ body are dropped rather than stored. Search is an exact, case-sensitive match th
 | `tests/unit/` | pytest suite, 84 test cases |
 | `scripts/e2e.sh` | 43 end-to-end assertions against the deployed API |
 | `demo/index.html` | a dependency-free browser client, for seeing it run |
-| `docs/` | the walkthrough, how the screenshots were made, and the images |
+| `docs/walkthrough.md` | the resource tour, the findings, and the screenshot inventory |
+| `docs/screenshot-process.md` | how the images were produced, and the prompt that handed it over |
+| `docs/screenshots/` | the images themselves |
 | `build/` | Lambda packages Terraform assembles; not committed |
 
 ## Deploying
