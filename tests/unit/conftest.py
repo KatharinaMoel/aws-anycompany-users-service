@@ -20,6 +20,7 @@ SRC = Path(__file__).resolve().parents[2] / "src"
 sys.dont_write_bytecode = True
 
 TABLE_NAME = "test-anycompany-users"
+EMAIL_INDEX_NAME = "email-index"
 REGION = "us-west-2"
 USER_POOL_ID = "us-west-2_testpool"
 APP_CLIENT_ID = "test-app-client-id"
@@ -66,7 +67,17 @@ def users_table(aws_credentials):
         client.create_table(
             TableName=TABLE_NAME,
             KeySchema=[{"AttributeName": "userid", "KeyType": "HASH"}],
-            AttributeDefinitions=[{"AttributeName": "userid", "AttributeType": "S"}],
+            AttributeDefinitions=[
+                {"AttributeName": "userid", "AttributeType": "S"},
+                {"AttributeName": "email", "AttributeType": "S"},
+            ],
+            GlobalSecondaryIndexes=[
+                {
+                    "IndexName": EMAIL_INDEX_NAME,
+                    "KeySchema": [{"AttributeName": "email", "KeyType": "HASH"}],
+                    "Projection": {"ProjectionType": "ALL"},
+                }
+            ],
             BillingMode="PAY_PER_REQUEST",
         )
         yield boto3.resource("dynamodb", region_name=REGION).Table(TABLE_NAME)
@@ -76,6 +87,7 @@ def users_table(aws_credentials):
 def users_app(users_table, monkeypatch):
     """The CRUD function, imported against the mocked table."""
     monkeypatch.setenv("TABLE_NAME", TABLE_NAME)
+    monkeypatch.setenv("EMAIL_INDEX_NAME", EMAIL_INDEX_NAME)
     monkeypatch.setenv("CORS_ALLOW_ORIGIN", "*")
     return load_module("users_app", SRC / "users" / "app.py")
 
@@ -84,13 +96,22 @@ def users_app(users_table, monkeypatch):
 def proxy_event():
     """Build the parts of an API Gateway REST proxy event the handler reads."""
 
-    def make(method, resource, body=None, userid=None, request_id="test-request-id"):
+    def make(
+        method,
+        resource,
+        body=None,
+        userid=None,
+        query=None,
+        request_id="test-request-id",
+    ):
         if body is not None and not isinstance(body, str):
             body = json.dumps(body)
         return {
             "httpMethod": method,
             "resource": resource,
             "pathParameters": {"userid": userid} if userid else None,
+            # API Gateway sends null, not {}, when there is no query string.
+            "queryStringParameters": query,
             "body": body,
             "requestContext": {"requestId": request_id},
         }

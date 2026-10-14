@@ -13,6 +13,7 @@ import uuid
 from datetime import datetime, timezone
 
 import boto3
+from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 
 # With the function's log format set to JSON, fields passed in extra={...} become JSON keys.
@@ -20,6 +21,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 TABLE_NAME = os.environ["TABLE_NAME"]
+EMAIL_INDEX_NAME = os.environ.get("EMAIL_INDEX_NAME", "email-index")
 CORS_ALLOW_ORIGIN = os.environ.get("CORS_ALLOW_ORIGIN", "*")
 
 # Module scope, so the client and its connection pool are reused across invocations.
@@ -96,6 +98,30 @@ def list_users(event):
     return response(200, {"users": users})
 
 
+def search_users(event):
+    """Find records by exact email, through the email index rather than a scan."""
+    # API Gateway sends queryStringParameters as null when the request carries
+    # no query string, so fall back to an empty dict before reading from it.
+    email = (event.get("queryStringParameters") or {}).get("email")
+    if not isinstance(email, str) or not email.strip():
+        raise ValidationError("Query parameter 'email' is required")
+
+    users = []
+    kwargs = {
+        "IndexName": EMAIL_INDEX_NAME,
+        "KeyConditionExpression": Key("email").eq(email.strip()),
+    }
+    while True:
+        page = table.query(**kwargs)
+        users.extend(page.get("Items", []))
+        start_key = page.get("LastEvaluatedKey")
+        if not start_key:
+            break
+        kwargs["ExclusiveStartKey"] = start_key
+
+    return response(200, {"users": users})
+
+
 def create_user(event):
     fields = parse_body(event)
     timestamp = now_iso()
@@ -152,6 +178,7 @@ def delete_user(event):
 
 ROUTES = {
     ("GET", "/users"): list_users,
+    ("GET", "/users/search"): search_users,
     ("POST", "/users"): create_user,
     ("GET", "/users/{userid}"): get_user,
     ("PUT", "/users/{userid}"): update_user,

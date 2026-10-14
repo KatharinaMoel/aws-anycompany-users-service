@@ -4,6 +4,12 @@ variable "name_prefix" {
   default     = "anycompany-users"
 }
 
+variable "email_index_name" {
+  description = "Name of the global secondary index that GET /users/search queries."
+  type        = string
+  default     = "email-index"
+}
+
 variable "lambda_runtime" {
   description = "Lambda runtime for both functions."
   type        = string

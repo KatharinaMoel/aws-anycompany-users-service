@@ -44,6 +44,16 @@ data "aws_iam_policy_document" "users" {
     resources = [aws_dynamodb_table.users.arn]
   }
 
+  # A query against a GSI is authorized on the index ARN, not the table ARN, so
+  # the statement above does not cover it. Kept separate so the function gains
+  # Query on the index only, never on the table.
+  statement {
+    sid     = "UsersEmailIndexQuery"
+    actions = ["dynamodb:Query"]
+
+    resources = ["${aws_dynamodb_table.users.arn}/index/${var.email_index_name}"]
+  }
+
   # Both actions are required: granting only PutTraceSegments leaves active
   # tracing silently incomplete.
   statement {
@@ -95,6 +105,7 @@ resource "aws_lambda_function" "users" {
   environment {
     variables = {
       TABLE_NAME        = aws_dynamodb_table.users.name
+      EMAIL_INDEX_NAME  = var.email_index_name
       CORS_ALLOW_ORIGIN = var.cors_allow_origin
     }
   }

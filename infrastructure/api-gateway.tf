@@ -90,6 +90,32 @@ locals {
         }
       }
 
+      # API Gateway matches a literal segment ahead of a path variable whatever
+      # order the paths appear in here, so /users/search reaches this operation
+      # and never get_user with userid = "search".
+      "/users/search" = {
+        get = {
+          operationId = "searchUsers"
+          summary     = "Find users by exact email address."
+
+          parameters = [{
+            name        = "email"
+            in          = "query"
+            required    = true
+            description = "Exact, case-sensitive email address to match."
+            schema      = { type = "string" }
+          }]
+
+          responses = {
+            "200" = { description = "A users array, empty when nothing matches." }
+            "400" = { description = "The email query parameter is missing or blank." }
+          }
+
+          security                          = local.cognito_security
+          "x-amazon-apigateway-integration" = local.lambda_integration
+        }
+      }
+
       "/users/{userid}" = {
         get = {
           operationId = "getUser"
